@@ -1,29 +1,85 @@
 import Express,{ Router } from "express";
+import sql from 'mssql'
 
+import sqlConfig from "../Database/dbConfig";
 const router=Router();
 
-router.delete("/del/:id",async(req:Express.Request,res:Express.Response)=>{
+router.delete("/:id",async(req:Express.Request,res:Express.Response)=>{
+    try {
+        const pool =await sql.connect(sqlConfig);
+        const result=pool.request()
+        .query(`delete from users where id=${req.params.id}`);
+         res.json(result);
+    } catch (error) {
+        console.log({message:error});    
+    }
 
 })
-router.put("/del/:user",async(req:Express.Request,res:Express.Response)=>{
+router.put("/:id",async(req:Express.Request,res:Express.Response)=>{
+    const{username,name,email,age,role,password}=req.body
 
-
+    try {
+        const pool =await sql.connect(sqlConfig);
+        const result=pool.request()
+        .query(`UPDATE  users username=${username},name=${name},email=${email},age=${age},role=${role},password=${password}) WHERE id=${req.params.id}`);
+        res.json(result);
+    } catch (error) {
+        console.log({message:error});  
+    }
 })
-router.post("/create",async(req:Express.Request,res:Express.Response)=>{
 
+router.post("/",async(req:Express.Request,res:Express.Response)=>{
+    const{id,username,name,email,age,role,password}=req.body
+    try {
+        const pool =await sql.connect(sqlConfig);
+        const result=pool.request()
+        .query(`INSERT INTO users VALUES(${id},${username},${name},${email},${age},${role},${password})`);
+        res.json(result);
+    } catch (error) {
+        console.log({message:error});  
+    }
 })
-router.get("/users",async(req:Express.Request,res:Express.Response)=>{
 
+router.get("/",async(req:Express.Request,res:Express.Response)=>{
+    try {
+        const pool =await sql.connect(sqlConfig);
+        const result=pool.request()
+        .query(`select * from users`);
+        res.json(result);
+    } catch (error) {
+        console.log({message:error});   
+    }
 })
+
 router.post("/login",async(req:Express.Request,res:Express.Response)=>{
-
+    try {
+        const {username,password}=req.body;
+        const pool =await sql.connect(sqlConfig);
+        const result=pool.request()
+        .query(`select * from users where username=${username} AND password=${password}`);
+        res.json(result);
+    } catch (error) {
+        console.log({message:error}); 
+    }
 })
 
-router.get("/search/:user",async(req:Express.Request,res:Express.Response)=>{
-
-
+router.get("/:search",async(req:Express.Request,res:Express.Response)=>{
+    try {
+        const search =req.params.search;
+    } catch (error) {
+        console.log({message:error});   
+    }
 })
-router.put("/Resetpassword/:user",async(req:Express.Request,res:Express.Response)=>{
 
-
+router.put("/Resetpassword/:id",async(req:Express.Request,res:Express.Response)=>{
+    const {password}=req.body;
+    try {
+        const pool =await sql.connect(sqlConfig);
+        const result=pool.request()
+        .query(`UPDATE users password=${password}`);
+    } catch (error) {
+        console.log({message:error});  
+    }
 })
+
+export default router;

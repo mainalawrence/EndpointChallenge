@@ -3,7 +3,6 @@
  import dotenv from 'dotenv';
  dotenv.config();
 
-
 const verifyToken = () => {
     return (req: Express.Request, res: Express.Response, next: Express.NextFunction) => {
       let token = req.headers.authorization;
@@ -12,7 +11,6 @@ const verifyToken = () => {
         if (jwtErr) {
           return res.status(401);
         } else {
-         
           return next();
         }
       });
