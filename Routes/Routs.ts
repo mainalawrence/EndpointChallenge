@@ -3,6 +3,8 @@ import sql from 'mssql'
 import bycrypt from 'bcrypt'
 import sqlConfig from "../Database/dbConfig";
 import jwt from 'jsonwebtoken'
+import Emailtransport from "../Email/email"
+
 const router=Router();
 import verifyToken from '../Authentication';
 router.delete("/:id",verifyToken(),async(req:Express.Request,res:Express.Response)=>{
@@ -84,21 +86,25 @@ router.post("/login",async(req:Express.Request,res:Express.Response)=>{
     }
 })
 
-router.get("/:search",verifyToken,async(req:Express.Request,res:Express.Response)=>{
+router.get("/:search",verifyToken(),async(req:Express.Request,res:Express.Response)=>{
     try {
     const search =req.params.search;
-    } catch (error) {
+    const pool=await sql.connect(sqlConfig);
+    const result = await pool.request()
+    .query(`SELECT id,username,name,age,role FROM users WHERE name LIKE '${search}%' OR email LIKE '${search}%' OR username LIKE '${search}%' or role LIKE '${search}%'`)
+    res.json(result.recordset);    
+} catch (error) {
         console.log({message:error});   
+        res.json(error);    
     }
 })
-
-router.put("/Resetpassword/:id",async(req:Express.Request,res:Express.Response)=>{
-    const {password}=req.body;
+router.put("/Resetpassword",async(req:Express.Request,res:Express.Response)=>{
+    const {email,password}=req.body;
     try {
         let encpassword=await bycrypt.hash(password,10);
         const pool =await sql.connect(sqlConfig);
         const result=await pool.request()
-        .query(`UPDATE users password=${encpassword}`);
+        .query(`UPDATE users password=${encpassword} where email='${email}'`);
     } catch (error) {
         console.log({message:error});  
     }
