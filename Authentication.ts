@@ -1,20 +1,23 @@
- import * as Express from "express";
- import jwt from 'jsonwebtoken';
+ import  {Request ,Response , NextFunction} from "express";
+ import jwt, { JsonWebTokenError } from 'jsonwebtoken';
  import dotenv from 'dotenv';
  dotenv.config();
-
-const verifyToken = () => {
-    return (req: Express.Request, res: Express.Response, next: Express.NextFunction) => {
+const verifyToken =() => {
+    return (req:Request,res:Response, next:NextFunction) => {
       let token = req.headers.authorization;
-      token = token && token.replace('bearer ', '');
-      return jwt.verify(token as string, process.env.SECREATE as string, (jwtErr: any, decoded: any) => {
+      if(token===''){
+       res.status(401).json("Error Fobiden");
+      }
+      token = token && token.replace('Bearer ','');
+      return jwt.verify(token as string,process.env.SECREATE as string,(jwtErr,decoded) => {
         if (jwtErr) {
-          return res.status(401);
-        } else {
+          return res.status(401).json("Fobiden");
+        } 
+        if(decoded){
           return next();
         }
       });
     };
   };
 
-exports ={verifyToken};
+export default verifyToken;

@@ -2,12 +2,13 @@ import Express,{ Router } from "express";
 import sql from 'mssql'
 import bycrypt from 'bcrypt'
 import sqlConfig from "../Database/dbConfig";
+import jwt from 'jsonwebtoken'
 const router=Router();
-
-router.delete("/:id",async(req:Express.Request,res:Express.Response)=>{
+import verifyToken from '../Authentication';
+router.delete("/:id",verifyToken(),async(req:Express.Request,res:Express.Response)=>{
     try {
         const pool =await sql.connect(sqlConfig);
-        const result=pool.request()
+        const result=await pool.request()
         .query(`delete from users where id=${req.params.id}`);
          res.json(result);
     } catch (error) {
@@ -15,12 +16,12 @@ router.delete("/:id",async(req:Express.Request,res:Express.Response)=>{
     }
 
 })
-router.put("/:id",async(req:Express.Request,res:Express.Response)=>{
-    const{username,name,email,age,role,password}=req.body
+router.put("/:id",verifyToken(),async(req:Express.Request,res:Express.Response)=>{
+    const{username,name,email,age,role,password}=req.body;
     try {
         let encpassword= await bycrypt.hash(password,10);
         const pool =await sql.connect(sqlConfig);
-        const result=pool.request()
+        const result=await pool.request()
         .query(`UPDATE  users username=${username},name=${name},email=${email},age=${age},role=${role},password=${encpassword}) WHERE id=${req.params.id}`);
         res.json(result);
     } catch (error) {
@@ -29,24 +30,25 @@ router.put("/:id",async(req:Express.Request,res:Express.Response)=>{
 })
 
 router.post("/",async(req:Express.Request,res:Express.Response)=>{
-    const{id,username,name,email,age,role,password}=req.body
+    const{id,username,name,email,age,role,password}=req.body    
     try {
         let encpassword= await bycrypt.hash(password,10);
         const pool =await sql.connect(sqlConfig);
-        const result=pool.request()
-        .query(`INSERT INTO users VALUES(${id},${username},${name},${email},${age},${role},${encpassword})`);
+        const result=await pool.request()
+        .query(`INSERT INTO users VALUES(${id},'${username}','${name}','${email}',${age},'${role}','${encpassword}')`);
         res.json(result);
     } catch (error) {
         console.log({message:error});  
+        res.status(300).json({Error:error})
     }
 })
 
-router.get("/",async(req:Express.Request,res:Express.Response)=>{
+router.get("/",verifyToken(),async(req:Express.Request,res:Express.Response)=>{
     try {
         const pool =await sql.connect(sqlConfig);
-        const result=pool.request()
-        .query(`select * from users`);
-        res.json(result);
+        const result=await pool.request()
+        .query(`SELECT * FROM users`);
+        res.json({deocoded:req.body.data,data:result.recordsets});
     } catch (error) {
         console.log({message:error});   
     }
@@ -56,23 +58,35 @@ router.post("/login",async(req:Express.Request,res:Express.Response)=>{
     try {
         const {username,password}=req.body;
         const pool =await sql.connect(sqlConfig);
-        const result=pool.request()
-        .query(`select * from users where username=${username}`);
-        if(!(await result).recordset[0]){
+        const result=await pool.request()
+        
+        .query(`select * from users where username='${username}'`);
+      
+        if(!result.recordset[0]){
             res.json({message:"wrong username or password"})
         }
-        if(await bycrypt.compare(password,(await result).recordset[0].password)){
-            res.json("you have logged in successfully");
-        }
-        
+        await bycrypt.compare(password,result.recordset[0].PASSWORD,(error,data)=>{
+           if(error){
+               res.json({Error:error});
+           }
+           if(data){
+            const {id,username,email,name,age,role}=result.recordset[0]
+            const token =jwt.sign({id,username,email,name,age,role},process.env.SECREATE as string,{ expiresIn: 60 * 60 *60 * 60});
+            res.json(token)
+           }
+           else{
+               res.json({Message:"Invalid Username or Password"})
+           }
+       })
+
     } catch (error) {
         console.log({message:error}); 
     }
 })
 
-router.get("/:search",async(req:Express.Request,res:Express.Response)=>{
+router.get("/:search",verifyToken,async(req:Express.Request,res:Express.Response)=>{
     try {
-        const search =req.params.search;
+    const search =req.params.search;
     } catch (error) {
         console.log({message:error});   
     }
@@ -83,7 +97,7 @@ router.put("/Resetpassword/:id",async(req:Express.Request,res:Express.Response)=
     try {
         let encpassword=await bycrypt.hash(password,10);
         const pool =await sql.connect(sqlConfig);
-        const result=pool.request()
+        const result=await pool.request()
         .query(`UPDATE users password=${encpassword}`);
     } catch (error) {
         console.log({message:error});  
